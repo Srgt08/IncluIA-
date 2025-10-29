@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>IncluIAê - Tradutor de Gestos (Interface Limpa)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.1.0/dist/fingerpose.min.js"></script>
+
+    
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>IncluIAê</h1>
+            <p>Tradutor de gestos com MediaPipe</p>
+        </header>
+
+        <main>
+            <div class="camera-area">
+                <video class="input_video" autoplay playsinline></video>
+                <canvas class="output_canvas"></canvas>
+
+                <div class="buttons">
+                    <button id="cadastrarGesto" class="speak-button">Cadastrar Gesto</button>
+                    <button id="limparGestos" class="speak-button" style="background:#ff7b7b">Limpar Gestos</button>
+                </div>
+            </div>
+
+            <div class="output-area">
+                <p id="output">Tentando iniciar a câmera...</p>
+                <div style="width:100%; margin-top:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="small">Gestos salvos:</span>
+                        <span id="totalSaved" class="small">0</span>
+                    </div>
+                    <div class="gestures-list" id="gesturesList"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const videoElement = document.querySelector('.input_video');
+        const canvasElement = document.querySelector('.output_canvas');
+        const transcriptionText = document.getElementById('output');
+        const cadastrarGestoButton = document.getElementById('cadastrarGesto');
+        const limparGestosButton = document.getElementById('limparGestos');
+        const gesturesListEl = document.getElementById('gesturesList');
+        const totalSavedEl = document.getElementById('totalSaved');
+        const canvasCtx = canvasElement.getContext('2d');
+        const webcam = videoElement;
+        let lastKnownLandmarks = null;
+
+        const STORAGE_KEY = 'incluae_custom_gestures_v1';
+        const MATCH_THRESHOLD = 0.13; // ajuste se necessário
+
+        // --- persistência ---
+        function loadCustomGestures() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) { console.error(e); return {}; }
+        }
+        function saveCustomGestures(obj) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); } catch(e){ console.error(e); }
+        }
+        function addGestureSample(name, flatLandmarks) {
+            const store = loadCustomGestures();
+            const key = name.toUpperCase();
+            if (!store[key]) store[key] = [];
+            store[key].push(flatLandmarks);
+            saveCustomGestures(store);
+            renderSavedList();
+        }
+        function clearSavedGestures() {
+            localStorage.removeItem(STORAGE_KEY);
+            renderSavedList();
+        }
+        function renderSavedList() {
+            const store = loadCustomGestures();
+            gesturesListEl.innerHTML = '';
+            let count = 0;
+            for (const [name, samples] of Object.entries(store)) {
+                count += samples.length;
+                const div = document.createElement('div');
+                div.className = 'gesture-item';
+                div.innerHTML = `<strong>${name}</strong><span class="small">${samples.length} amostras</span>`;
+                gesturesListEl.appendChild(div);
+            }
+            totalSavedEl.textContent = count;
+        }
+
+        // --- normalização e comparação ---
+        function flattenLandmarks(landmarks) {
+            const flat = [];
+            for (const lm of landmarks) flat.push(lm.x, lm.y, lm.z ?? 0);
+            return flat;
+        }
+        function normalizeFlat(flat) {
+            if (!flat || flat.length < 6) return flat;
+            const pts = [];
+            for (let i = 0; i < flat.length; i += 3) pts.push([flat[i], flat[i+1]]);
+            const ref = pts[0];
+            const translated = pts.map(p => [p[0]-ref[0], p[1]-ref[1]]);
+            let maxd = 0;
+            for (const p of translated) { const d = Math.hypot(p[0], p[1]); if (d > maxd) maxd = d; }
+            if (maxd === 0) maxd = 1;
+            const norm = [];
+            for (const p of translated) norm.push(p[0]/maxd, p[1]/maxd);
+            return norm;
+        }
+        function meanDistance(normA, normB) {
+            if (!normA || !normB || normA.length !== normB.length) return Infinity;
+            let sum = 0;
+            for (let i = 0; i < normA.length; i++) { const d = normA[i]-normB[i]; sum += d*d; }
+            return Math.sqrt(sum / (normA.length/2));
+        }
+        function matchCustomGesture(landmarks) {
+            const flat = flattenLandmarks(landmarks);
+            const norm = normalizeFlat(flat);
+            const store = loadCustomGestures();
+            let best = { name: null, distance: Infinity };
+            for (const [name, samples] of Object.entries(store)) {
+                for (const sampleFlat of samples) {
+                    const sampleNorm = normalizeFlat(sampleFlat);
+                    const dist = meanDistance(norm, sampleNorm);
+                    if (dist < best.distance) best = { name, distance: dist };
+                }
+            }
+            if (best.name && best.distance < MATCH_THRESHOLD) return best;
+            return null;
+        }
+
+        // --- Fingerpose gestures (predefinidos) ---
+        class GestureALibras extends fp.GestureDescription {
+            constructor() { super('LETRA_A_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.FullCurl, 1.0); this.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.HorizontalLeft, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.HorizontalRight, 1.0); }
+        }
+        class GestureBLibras extends fp.GestureDescription {
+            constructor() { super('LETRA_B_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) { this.addCurl(f, fp.FingerCurl.NoCurl, 1.0); this.addDirection(f, fp.FingerDirection.VerticalUp, 1.0); } this.addCurl(fp.Finger.Thumb, fp.FingerCurl.FullCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalDownLeft, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalDownRight, 0.9); }
+        }
+        class GestureCLibras extends fp.GestureDescription {
+            constructor() { super('LETRA_C_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) { this.addCurl(f, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(f, fp.FingerDirection.HorizontalLeft, 0.7); this.addDirection(f, fp.FingerDirection.HorizontalRight, 0.7); } this.addCurl(fp.Finger.Thumb, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.VerticalUp, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.9); }
+        }
+        class GestureDLibras extends fp.GestureDescription {
+            constructor() { super('LETRA_D_LIBRAS'); this.addCurl(fp.Finger.Index, fp.FingerCurl.NoCurl, 1.0); this.addDirection(fp.Finger.Index, fp.FingerDirection.VerticalUp, 1.0); for (let f of [fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.FullCurl, 1.0); this.addCurl(fp.Finger.Thumb, fp.FingerCurl.HalfCurl, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.7); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.7); }
+        }
+        class GestureOLibras extends fp.GestureDescription {
+            constructor() { super('LETRA_O_LIBRAS'); for (let f of [fp.Finger.Thumb, fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.7); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.7); }
+        }
+
+        const gestures = [ new GestureALibras(), new GestureBLibras(), new GestureCLibras(), new GestureDLibras(), new GestureOLibras() ];
+        const GE = new fp.GestureEstimator(gestures);
+
+        // --- MediaPipe Hands ---
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
+        hands.onResults(onResults);
+
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            if (results.image) canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                lastKnownLandmarks = landmarks;
+
+                // Fingerpose estimate
+                const poseData = landmarks.map(lm => [lm.x * canvasElement.width, lm.y * canvasElement.height, lm.z * canvasElement.width]);
+                const predictions = GE.estimate(poseData, 7.5);
+                let detectedGesture = "Mão detectada. Gesto desconhecido.";
+
+                if (predictions.gestures && predictions.gestures.length > 0) {
+                    const best = predictions.gestures.reduce((p,c) => p.score>c.score? p:c);
+                    if (best.score > 8.5) {
+                        let name = best.name;
+                        if (name === 'LETRA_O_LIBRAS' && landmarks[0].y < 0.5) name = 'SINAL_OI_LIBRAS';
+                        detectedGesture = `✨ Sinal: ${name.replace('_LIBRAS','')} (FP: ${best.score.toFixed(2)})`;
+                    }
+                }
+
+                // Try matching saved custom gestures
+                const custom = matchCustomGesture(landmarks);
+                if (custom) {
+                    detectedGesture = `✅ Gest. salvo: ${custom.name} (dist ${custom.distance.toFixed(3)})`;
+                }
+
+                transcriptionText.textContent = detectedGesture;
+
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#FF4444', lineWidth: 4 });
+                drawLandmarks(canvasCtx, landmarks, { color: '#7B68EE', lineWidth: 2, radius: 4 });
+            } else {
+                lastKnownLandmarks = null;
+                transcriptionText.textContent = "Nenhuma mão detectada. Posicione a mão na frente da câmera.";
+            }
+            canvasCtx.restore();
+        }
+
+        // --- iniciar câmera ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const camera = new Camera(webcam, {
+                onFrame: async () => { await hands.send({ image: webcam }); },
+                width: 640, height: 480
+            });
+            camera.start().then(() => {
+                transcriptionText.textContent = "Câmera iniciada. Posicione a mão.";
+                // ajustar canvas ao vídeo
+                canvasElement.width = webcam.clientWidth;
+                canvasElement.height = webcam.clientHeight;
+                renderSavedList();
+            }).catch((e) => {
+                console.error('Erro ao iniciar câmera:', e);
+                transcriptionText.textContent = 'ERRO ao iniciar a câmera. Rode via http://localhost ou HTTPS e permita a câmera.';
+            });
+        });
+
+        // --- cadastro de gesto ---
+        cadastrarGestoButton.addEventListener('click', () => {
+            if (!lastKnownLandmarks) {
+                transcriptionText.textContent = "Nenhuma mão detectada. Posicione a mão e tente novamente.";
+                return;
+            }
+            const name = prompt('Nome do gesto (ex: MEU_SINAL):');
+            if (!name) { transcriptionText.textContent = 'Cadastro cancelado.'; return; }
+            const flat = flattenLandmarks(lastKnownLandmarks);
+            addGestureSample(name.trim().toUpperCase(), flat);
+            transcriptionText.textContent = `✅ Amostra adicionada para "${name.trim().toUpperCase()}"`;
+        });
+
+        limparGestosButton.addEventListener('click', () => {
+            if (!confirm('Deseja remover todos os gestos salvos?')) return;
+            clearSavedGestures();
+            transcriptionText.textContent = 'Gestos salvos limpos.';
+        });
+
+        // --- inicial render ---
+        renderSavedList();
+    </script>
+</body>
+</html>

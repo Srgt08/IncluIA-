@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="ajuda-style.css">
+  <title>Central de Ajuda - IncluIAê</title>
+</head>
+<body>
+  <!-- Header matching the main page -->
+  <header class="header">
+    <img src="../imagens/Vetor Logo.png" alt="IncluIAê Logo" class="logo">
+    <a href="index.html" class="nav-link">Voltar ao início</a>
+  </header>
+
+  <div class="help-container">
+    <!-- Hero section -->
+    <section class="help-hero">
+      <h1>Está com problemas para usar?</h1>
+      <p class="subtitle">Estamos aqui para ajudar! Confira as perguntas frequentes ou entre em contato conosco.</p>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+      <h2>Perguntas Frequentes</h2>
+      
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Como funciona a transcrição em tempo real?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Nossa tecnologia utiliza inteligência artificial para capturar áudio em tempo real e convertê-lo em texto instantaneamente. Basta permitir o acesso ao microfone e começar a falar. A transcrição aparecerá na tela automaticamente.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Preciso criar uma conta para usar?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Não! O IncluIAê foi desenvolvido para ser acessível a todos. Você pode usar nossas ferramentas de transcrição e comunicação por gestos sem necessidade de cadastro ou login.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>A ferramenta funciona offline?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Atualmente, o IncluIAê requer conexão com a internet para funcionar, pois utilizamos processamento em nuvem para garantir a melhor qualidade de transcrição e reconhecimento de gestos.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Quais navegadores são compatíveis?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>O IncluIAê funciona melhor no Google Chrome, Microsoft Edge, Firefox e Safari (versões mais recentes). Recomendamos manter seu navegador sempre atualizado para a melhor experiência.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Como ativar o acesso à câmera e microfone?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Quando você acessar uma funcionalidade que precisa de câmera ou microfone, seu navegador pedirá permissão. Clique em "Permitir". Se você negou acidentalmente, vá nas configurações do navegador e habilite as permissões para o site do IncluIAê.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>O serviço é gratuito?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Sim! O IncluIAê é uma plataforma gratuita desenvolvida para promover a inclusão e acessibilidade. Nosso objetivo é tornar a comunicação acessível para todos, sem barreiras financeiras.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section">
+      <h2>Ainda precisa de ajuda?</h2>
+      <p class="contact-subtitle">Entre em contato conosco através de um dos canais abaixo</p>
+      
+      <div class="contact-cards">
+        <div class="contact-card">
+          <div class="contact-icon">📧</div>
+          <h3>Email</h3>
+          <p>Envie suas dúvidas para nosso suporte</p>
+          <a href="mailto:suporte@incluiae.com.br" class="btn btn-primary">suporte@incluiae.com.br</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-icon">💬</div>
+          <h3>Chat ao Vivo</h3>
+          <p>Converse com nossa equipe em tempo real</p>
+          <button class="btn btn-secondary" onclick="alert('Chat em breve!')">Iniciar Chat</button>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-icon">📚</div>
+          <h3>Documentação</h3>
+          <p>Acesse guias detalhados de uso</p>
+          <a href="#" class="btn btn-outline">Ver Documentação</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Back to home link -->
+    <div class="back-home">
+      <a href="index.html" class="back-link">← Voltar para a página inicial</a>
+    </div>
+  </div>
+
+  <script>
+    function toggleFaq(button) {
+      const faqItem = button.parentElement;
+      const answer = faqItem.querySelector('.faq-answer');
+      const icon = button.querySelector('.faq-icon');
+      
+      // Close all other FAQs
+      document.querySelectorAll('.faq-item').forEach(item => {
+        if (item !== faqItem && item.classList.contains('active')) {
+          item.classList.remove('active');
+          item.querySelector('.faq-answer').style.maxHeight = null;
+          item.querySelector('.faq-icon').textContent = '+';
+        }
+      });
+      
+      // Toggle current FAQ
+      faqItem.classList.toggle('active');
+      
+      if (faqItem.classList.contains('active')) {
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+        icon.textContent = '−';
+      } else {
+        answer.style.maxHeight = null;
+        icon.textContent = '+';
+      }
+    }
+  </script>
+</body>
+</html>

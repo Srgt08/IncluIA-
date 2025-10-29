@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intérprete de Libras</title>
+  <link rel="stylesheet" href="txtlibras.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="flex h-screen">
+    <!-- Left Panel -->
+    <div class="w-1/2 bg-white p-12 flex flex-col border-r border-gray-200">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Intérprete de Libras</h1>
+        <p class="text-gray-600">Fale no microfone e veja a tradução em tempo real</p>
+      </div>
+
+      <!-- Avatar Card -->
+      <div class="flex-1 flex items-center justify-center">
+        <!-- Added ID and recording state styling -->
+        <div id="avatarCard" class="bg-gray-50 rounded-3xl p-16 w-full max-w-md transition-colors duration-300">
+          <div class="flex flex-col items-center">
+            <!-- Simple Person Illustration -->
+            <!-- Added IDs for animation control -->
+            <svg id="avatar" width="200" height="280" viewBox="0 0 200 280" class="mb-8">
+              <!-- Head -->
+              <circle cx="100" cy="60" r="50" fill="#5B7FE8"/>
+              
+              <!-- Body -->
+              <rect x="70" y="110" width="60" height="80" rx="8" fill="#5B7FE8"/>
+              
+              <!-- Arms -->
+              <g id="leftArm">
+                <line x1="40" y1="140" x2="70" y2="140" stroke="#9B6FD8" stroke-width="12" stroke-linecap="round"/>
+                <circle cx="40" cy="140" r="12" fill="#9B6FD8"/>
+              </g>
+              
+              <g id="rightArm">
+                <line x1="130" y1="140" x2="160" y2="140" stroke="#9B6FD8" stroke-width="12" stroke-linecap="round"/>
+                <circle cx="160" cy="140" r="12" fill="#9B6FD8"/>
+              </g>
+              
+              <!-- Legs -->
+              <rect x="75" y="190" width="20" height="80" rx="10" fill="#7B9FE8"/>
+              <rect x="105" y="190" width="20" height="80" rx="10" fill="#7B9FE8"/>
+            </svg>
+
+            <!-- Added ID for status text updates -->
+            <p id="statusText" class="text-gray-500 text-center">Aguardando fala...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Buttons -->
+      <div class="flex gap-4 justify-center mt-8">
+        <!-- Added IDs and click handlers -->
+        <button id="micButton" class="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg relative">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        </button>
+        <button id="speakerButton" class="w-16 h-16 rounded-full bg-white border-2 border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="w-1/2 bg-gray-50 p-12 flex flex-col">
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-1">Transcrição</h2>
+        <p class="text-sm text-gray-600">Histórico de conversas capturadas</p>
+      </div>
+
+      <!-- Transcription Area -->
+      <!-- Added ID and scrollable container for transcriptions -->
+      <div id="transcriptionArea" class="flex-1 overflow-y-auto">
+        <div id="welcomeMessage" class="flex items-center justify-center h-full">
+          <div class="text-center max-w-md">
+            <div class="text-6xl mb-6">👋</div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Bem-vindo ao Intérprete de Libras</h3>
+            <p class="text-gray-600 leading-relaxed">
+              Clique no botão do microfone para começar a falar. Suas palavras serão transcritas e traduzidas para libras em tempo real.
+            </p>
+          </div>
+        </div>
+        <!-- Container for transcription entries -->
+        <div id="transcriptionList" class="space-y-4 hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Added JavaScript functionality -->
+  <script>
+    // State management
+    let isRecording = false;
+    let recognition = null;
+    let transcriptions = [];
+
+    // DOM elements
+    const micButton = document.getElementById('micButton');
+    const speakerButton = document.getElementById('speakerButton');
+    const statusText = document.getElementById('statusText');
+    const avatarCard = document.getElementById('avatarCard');
+    const leftArm = document.getElementById('leftArm');
+    const rightArm = document.getElementById('rightArm');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    const transcriptionList = document.getElementById('transcriptionList');
+
+    // Initialize Speech Recognition
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        alert('Seu navegador não suporta reconhecimento de voz. Por favor, use Chrome ou Edge.');
+        return null;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        console.log('[v0] Speech recognition started');
+        statusText.textContent = 'Escutando...';
+        avatarCard.classList.add('bg-blue-50');
+        leftArm.classList.add('animate-wave');
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          console.log('[v0] Final transcript:', finalTranscript);
+          addTranscription(finalTranscript.trim());
+        }
+
+        if (interimTranscript) {
+          statusText.textContent = `Ouvindo: "${interimTranscript}"`;
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('[v0] Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          statusText.textContent = 'Nenhuma fala detectada. Tente novamente.';
+        } else {
+          statusText.textContent = `Erro: ${event.error}`;
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('[v0] Speech recognition ended');
+        if (isRecording) {
+          // Restart if still in recording mode
+          recognition.start();
+        } else {
+          stopRecording();
+        }
+      };
+
+      return recognition;
+    }
+
+    // Start recording
+    function startRecording() {
+      if (!recognition) {
+        recognition = initSpeechRecognition();
+        if (!recognition) return;
+      }
+
+      isRecording = true;
+      recognition.start();
+      micButton.classList.add('bg-red-600', 'hover:bg-red-700');
+      micButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+    }
+
+    // Stop recording
+    function stopRecording() {
+      isRecording = false;
+      if (recognition) {
+        recognition.stop();
+      }
+      statusText.textContent = 'Aguardando fala...';
+      avatarCard.classList.remove('bg-blue-50');
+      leftArm.classList.remove('animate-wave');
+      micButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+      micButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    }
+
+    // Add transcription to history
+    function addTranscription(text) {
+      const timestamp = new Date().toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      transcriptions.push({ text, timestamp });
+
+      // Hide welcome message and show transcription list
+      welcomeMessage.classList.add('hidden');
+      transcriptionList.classList.remove('hidden');
+
+      // Create transcription entry
+      const entry = document.createElement('div');
+      entry.className = 'bg-white rounded-lg p-4 shadow-sm border border-gray-200';
+      entry.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+          <span class="text-xs text-gray-500">${timestamp}</span>
+          <button onclick="speakText('${text.replace(/'/g, "\\'")}', this)" class="text-blue-600 hover:text-blue-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          </button>
+        </div>
+        <p class="text-gray-800">${text}</p>
+      `;
+
+      transcriptionList.insertBefore(entry, transcriptionList.firstChild);
+    }
+
+    // Text-to-speech function
+    function speakText(text, button) {
+      if ('speechSynthesis' in window) {
+        // Stop any ongoing speech
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 1;
+        utterance.pitch = 1;
+
+        // Visual feedback
+        button.classList.add('text-green-600');
+        rightArm.classList.add('animate-wave');
+
+        utterance.onend = () => {
+          button.classList.remove('text-green-600');
+          rightArm.classList.remove('animate-wave');
+        };
+
+        window.speechSynthesis.speak(utterance);
+        console.log('[v0] Speaking text:', text);
+      } else {
+        alert('Seu navegador não suporta síntese de voz.');
+      }
+    }
+
+    // Speak last transcription
+    function speakLastTranscription() {
+      if (transcriptions.length > 0) {
+        const lastText = transcriptions[transcriptions.length - 1].text;
+        speakText(lastText, speakerButton);
+      } else {
+        alert('Nenhuma transcrição disponível para reproduzir.');
+      }
+    }
+
+    // Event listeners
+    micButton.addEventListener('click', () => {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+
+    speakerButton.addEventListener('click', speakLastTranscription);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (recognition) {
+        recognition.stop();
+      }
+      window.speechSynthesis.cancel();
+    });
+  </script>
+</body>
+</html>

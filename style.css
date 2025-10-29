@@ -1,0 +1,223 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Updated background to cream/beige color from screenshot */
+  background-color: #F5F1E8;
+  color: #333;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Added header navigation */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 60px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.logo {
+  height: 50px;
+}
+
+.nav-link {
+  color: #1a1a1a;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100vh;
+  margin: 0;
+  padding: 20px 60px;
+  gap: 60px;
+}
+
+.content {
+  flex: 1;
+  max-width: 700px;
+  /* Added padding-top to account for header */
+  padding-top: 80px;
+}
+
+.content h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  /* Updated text color to pure black */
+  color: #000000;
+  margin-bottom: 30px;
+  line-height: 1.2;
+}
+
+/* Updated highlight colors to match brand */
+.highlight-blue {
+  color: #4A5FD9;
+}
+
+.highlight-yellow {
+  color: #FFB800;
+}
+
+.content p {
+  font-size: 1.25rem;
+  color: #555;
+  margin-bottom: 40px;
+  line-height: 1.8;
+}
+
+.buttons {
+  display: flex;
+  /* Changed to horizontal layout for buttons */
+  flex-direction: row;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.btn {
+  padding: 18px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  /* Updated border-radius to more rounded style */
+  border-radius: 50px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  display: inline-block;
+}
+
+/* Updated primary button to yellow */
+.btn-primary {
+  background-color: #FFB800;
+  color: #4A5FD9;
+}
+
+.btn-primary:hover {
+  background-color: #E5A600;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 184, 0, 0.3);
+}
+
+/* Updated secondary button to blue */
+.btn-secondary {
+  background-color: #4A5FD9;
+  color: #FFB800;
+}
+
+.btn-secondary:hover {
+  background-color: #3A4FB9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 95, 217, 0.3);
+}
+
+/* Added help link styling */
+.help-link {
+  color: #4A5FD9;
+  text-decoration: underline;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.help-link:hover {
+  color: #3A4FB9;
+}
+
+.image-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  height: 100%;
+}
+
+.image-section::before {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255, 184, 0, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.image-section img {
+  width: 100%;
+  height: 90%;
+  object-fit: contain;
+  transform: scale(1.1);
+  margin-top: 50px;
+}
+
+@media (max-width: 1024px) {
+  .header {
+    padding: 20px 30px;
+  }
+
+  .container {
+    flex-direction: column;
+    padding: 30px;
+    gap: 40px;
+  }
+
+  .content {
+    max-width: 100%;
+    text-align: center;
+    padding-top: 60px;
+  }
+
+  .content h1 {
+    font-size: 2.5rem;
+  }
+
+  .buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .image-section {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 15px 20px;
+  }
+
+  .logo {
+    height: 40px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  .content h1 {
+    font-size: 2rem;
+  }
+
+  .content p {
+    font-size: 1rem;
+  }
+
+  .btn {
+    width: 100%;
+    text-align: center;
+  }
+}
