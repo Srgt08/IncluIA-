@@ -19,32 +19,15 @@
       <!-- Avatar Card -->
       <div class="flex-1 flex items-center justify-center">
         <!-- Added ID and recording state styling -->
-        <div id="avatarCard" class="bg-gray-50 rounded-3xl p-16 w-full max-w-md transition-colors duration-300">
+        <div id="avatarCard" class="bg-gray-50 rounded-3xl w-full max-w-4xl transition-colors duration-300">
           <div class="flex flex-col items-center">
             <!-- Simple Person Illustration -->
             <!-- Added IDs for animation control -->
-            <svg id="avatar" width="200" height="280" viewBox="0 0 200 280" class="mb-8">
-              <!-- Head -->
-              <circle cx="100" cy="60" r="50" fill="#5B7FE8"/>
-              
-              <!-- Body -->
-              <rect x="70" y="110" width="60" height="80" rx="8" fill="#5B7FE8"/>
-              
-              <!-- Arms -->
-              <g id="leftArm">
-                <line x1="40" y1="140" x2="70" y2="140" stroke="#9B6FD8" stroke-width="12" stroke-linecap="round"/>
-                <circle cx="40" cy="140" r="12" fill="#9B6FD8"/>
-              </g>
-              
-              <g id="rightArm">
-                <line x1="130" y1="140" x2="160" y2="140" stroke="#9B6FD8" stroke-width="12" stroke-linecap="round"/>
-                <circle cx="160" cy="140" r="12" fill="#9B6FD8"/>
-              </g>
-              
-              <!-- Legs -->
-              <rect x="75" y="190" width="20" height="80" rx="10" fill="#7B9FE8"/>
-              <rect x="105" y="190" width="20" height="80" rx="10" fill="#7B9FE8"/>
-            </svg>
+            <!-- Replaced SVG avatar with a video element. Uses the project video at ../video-libras/oi.mp4 -->
+            <video id="avatarVideo" class="avatar-video" playsinline muted preload="metadata" style="object-fit:cover;">
+              <source src="../imagens/IncluIAê.mp4" type="video/mp4">
+              Seu navegador não suporta o elemento de vídeo.
+            </video>
 
             <!-- Added ID for status text updates -->
             <p id="statusText" class="text-gray-500 text-center">Aguardando fala...</p>
@@ -105,10 +88,55 @@
     const speakerButton = document.getElementById('speakerButton');
     const statusText = document.getElementById('statusText');
     const avatarCard = document.getElementById('avatarCard');
+    const avatarVideo = document.getElementById('avatarVideo');
     const leftArm = document.getElementById('leftArm');
     const rightArm = document.getElementById('rightArm');
     const welcomeMessage = document.getElementById('welcomeMessage');
     const transcriptionList = document.getElementById('transcriptionList');
+
+    // Try to play avatar video up to 2 times per user action (guards for autoplay policies)
+    let _avatarPlayCount = 0;
+    let _avatarEndedHandler = null;
+
+    function playAvatarVideo() {
+      if (!avatarVideo) return;
+      try {
+        // Ensure video is not in loop mode; we'll control replay manually
+        avatarVideo.loop = false;
+
+        // Remove any previous ended handler to avoid duplicates
+        if (_avatarEndedHandler) {
+          avatarVideo.removeEventListener('ended', _avatarEndedHandler);
+          _avatarEndedHandler = null;
+        }
+
+        // Reset count and start from beginning
+        _avatarPlayCount = 0;
+        avatarVideo.currentTime = 0;
+
+        // Handler increments count and replays until we reached 2 plays
+        _avatarEndedHandler = function () {
+          _avatarPlayCount += 1;
+          if (_avatarPlayCount < 2) {
+            // play again
+            const p = avatarVideo.play();
+            if (p && p.catch) p.catch(err => console.warn('[v0] avatar video replay failed:', err));
+          } else {
+            // finished the second play — clean up
+            avatarVideo.removeEventListener('ended', _avatarEndedHandler);
+            _avatarEndedHandler = null;
+            _avatarPlayCount = 0;
+          }
+        };
+
+        avatarVideo.addEventListener('ended', _avatarEndedHandler);
+
+        const p = avatarVideo.play();
+        if (p && p.catch) p.catch(err => console.warn('[v0] avatar video play failed:', err));
+      } catch (err) {
+        console.warn('[v0] playAvatarVideo error:', err);
+      }
+    }
 
     // Initialize Speech Recognition
     function initSpeechRecognition() {
@@ -128,7 +156,8 @@
         console.log('[v0] Speech recognition started');
         statusText.textContent = 'Escutando...';
         avatarCard.classList.add('bg-blue-50');
-        leftArm.classList.add('animate-wave');
+        if (leftArm) leftArm.classList.add('animate-wave');
+  // no avatar video playback here; play only when user presses the listen button
       };
 
       recognition.onresult = (event) => {
@@ -145,9 +174,9 @@
         }
 
         if (finalTranscript) {
-          console.log('[v0] Final transcript:', finalTranscript);
-          addTranscription(finalTranscript.trim());
-        }
+            console.log('[v0] Final transcript:', finalTranscript);
+            addTranscription(finalTranscript.trim());
+          }
 
         if (interimTranscript) {
           statusText.textContent = `Ouvindo: "${interimTranscript}"`;
@@ -187,6 +216,7 @@
       recognition.start();
       micButton.classList.add('bg-red-600', 'hover:bg-red-700');
       micButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+  // no avatar video playback here; play only when user presses the listen button
     }
 
     // Stop recording
@@ -197,7 +227,7 @@
       }
       statusText.textContent = 'Aguardando fala...';
       avatarCard.classList.remove('bg-blue-50');
-      leftArm.classList.remove('animate-wave');
+      if (leftArm) leftArm.classList.remove('animate-wave');
       micButton.classList.remove('bg-red-600', 'hover:bg-red-700');
       micButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
     }
@@ -218,17 +248,39 @@
       // Create transcription entry
       const entry = document.createElement('div');
       entry.className = 'bg-white rounded-lg p-4 shadow-sm border border-gray-200';
-      entry.innerHTML = `
-        <div class="flex justify-between items-start mb-2">
-          <span class="text-xs text-gray-500">${timestamp}</span>
-          <button onclick="speakText('${text.replace(/'/g, "\\'")}', this)" class="text-blue-600 hover:text-blue-700">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            </svg>
-          </button>
-        </div>
-        <p class="text-gray-800">${text}</p>
+
+      const header = document.createElement('div');
+      header.className = 'flex justify-between items-start mb-2';
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'text-xs text-gray-500';
+      timeSpan.textContent = timestamp;
+
+      const playBtn = document.createElement('button');
+      playBtn.type = 'button';
+      playBtn.className = 'text-blue-600 hover:text-blue-700';
+      playBtn.setAttribute('aria-label', 'Ouvir transcrição');
+      playBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
       `;
+
+      header.appendChild(timeSpan);
+      header.appendChild(playBtn);
+
+      const paragraph = document.createElement('p');
+      paragraph.className = 'text-gray-800';
+      paragraph.textContent = text;
+
+      entry.appendChild(header);
+      entry.appendChild(paragraph);
+
+      // Add click handler: play avatar video first, then speak text
+      playBtn.addEventListener('click', () => {
+        playAvatarVideo();
+        speakText(text, playBtn);
+      });
 
       transcriptionList.insertBefore(entry, transcriptionList.firstChild);
     }
@@ -239,6 +291,8 @@
         // Stop any ongoing speech
         window.speechSynthesis.cancel();
 
+  // do not auto-play avatar video here; playback is triggered by the per-entry listen button
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'pt-BR';
         utterance.rate = 1;
@@ -246,11 +300,11 @@
 
         // Visual feedback
         button.classList.add('text-green-600');
-        rightArm.classList.add('animate-wave');
+        if (rightArm) rightArm.classList.add('animate-wave');
 
         utterance.onend = () => {
           button.classList.remove('text-green-600');
-          rightArm.classList.remove('animate-wave');
+          if (rightArm) rightArm.classList.remove('animate-wave');
         };
 
         window.speechSynthesis.speak(utterance);
@@ -264,7 +318,8 @@
     function speakLastTranscription() {
       if (transcriptions.length > 0) {
         const lastText = transcriptions[transcriptions.length - 1].text;
-        speakText(lastText, speakerButton);
+  // speak last transcription without triggering avatar video
+  speakText(lastText, speakerButton);
       } else {
         alert('Nenhuma transcrição disponível para reproduzir.');
       }

@@ -1,244 +1,419 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <title>IncluIAê - Tradutor de Gestos (Interface Limpa)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.1.0/dist/fingerpose.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reconhecimento Facial e das Mãos</title>
 
-    
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e8e8e8;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      background-color: #fef9e7;
+      border: 4px solid #7b68ee;
+      border-radius: 8px;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ff4444;
+      flex-wrap: wrap;
+    }
+    header h1 { color: #7b68ee; font-size: 2.5em; margin: 0; }
+    header p { color: #ff4444; font-size: 1.2em; font-weight: 500; }
+    header .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    main {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 40px;
+    }
+    .data-list {
+      background-color: #ffffff;
+      border: 2px solid #7b68ee;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .data-list h3 { margin-top: 0; color: #7b68ee; }
+    .data-list ul { list-style: none; padding: 0; }
+    .data-list li { padding: 5px 0; border-bottom: 1px solid #eee; }
+    .camera-area {
+      position: relative;
+      width: 640px;
+      height: 480px;
+      border: 3px solid #e70000;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #000;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    }
+    .input_video, .output_canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .output_canvas { z-index: 10; }
+    .speak-button {
+      background-color: #7b68ee;
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.15s;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.18);
+    }
+    .speak-button:hover {
+      background-color: #5a4bcf;
+      transform: translateY(-2px);
+    }
+  </style>
+
+  <!-- MediaPipe -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>IncluIAê</h1>
-            <p>Tradutor de gestos com MediaPipe</p>
-        </header>
+  <div class="container">
+    <header>
+      <h1>Reconhecimento Facial e das Mãos</h1>
+      <div class="buttons">
+        <button id="toggleCamera" class="speak-button">Ativar Câmera</button>
+        <button id="toggleLines" class="speak-button">ON</button>
+        <button id="cadastrarLibras" class="speak-button">Cadastrar Libras</button>
+        <button id="cadastrarFaces" class="speak-button">Cadastrar Faces</button>
+        <button id="limparDados" class="speak-button">Limpar Dados</button>
+      </div>
+    </header>
 
-        <main>
-            <div class="camera-area">
-                <video class="input_video" autoplay playsinline></video>
-                <canvas class="output_canvas"></canvas>
+    <main>
+      <div class="camera-area">
+        <video class="input_video" id="input_video" autoplay playsinline></video>
+        <canvas class="output_canvas" id="output_canvas" width="640" height="480"></canvas>
+      </div>
+      <div class="data-list">
+        <h3>Gestos Registrados</h3>
+        <ul id="gesturesList"></ul>
+        <h3>Faces Registradas</h3>
+        <ul id="facesList"></ul>
+      </div>
+    </main>
+  </div>
 
-                <div class="buttons">
-                    <button id="cadastrarGesto" class="speak-button">Cadastrar Gesto</button>
-                    <button id="limparGestos" class="speak-button" style="background:#ff7b7b">Limpar Gestos</button>
-                </div>
-            </div>
+  <script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const toggleButton = document.getElementById('toggleCamera');
+    const toggleLinesButton = document.getElementById('toggleLines');
+    const cadastrarButton = document.getElementById('cadastrarLibras');
+    const cadastrarFacesButton = document.getElementById('cadastrarFaces');
+    const limparDadosButton = document.getElementById('limparDados');
+    const gesturesList = document.getElementById('gesturesList');
+    const facesList = document.getElementById('facesList');
 
-            <div class="output-area">
-                <p id="output">Tentando iniciar a câmera...</p>
-                <div style="width:100%; margin-top:8px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span class="small">Gestos salvos:</span>
-                        <span id="totalSaved" class="small">0</span>
-                    </div>
-                    <div class="gestures-list" id="gesturesList"></div>
-                </div>
-            </div>
-        </main>
-    </div>
+    let showLines = true;
+    let showPoints = true;
 
-    <script>
-        const videoElement = document.querySelector('.input_video');
-        const canvasElement = document.querySelector('.output_canvas');
-        const transcriptionText = document.getElementById('output');
-        const cadastrarGestoButton = document.getElementById('cadastrarGesto');
-        const limparGestosButton = document.getElementById('limparGestos');
-        const gesturesListEl = document.getElementById('gesturesList');
-        const totalSavedEl = document.getElementById('totalSaved');
-        const canvasCtx = canvasElement.getContext('2d');
-        const webcam = videoElement;
-        let lastKnownLandmarks = null;
+    let cameraActive = false;
+    let camera = null;
 
-        const STORAGE_KEY = 'incluae_custom_gestures_v1';
-        const MATCH_THRESHOLD = 0.13; // ajuste se necessário
+    // Gestos registrados: array de {letter, samples: [landmarks]}
+    let registeredGestures = JSON.parse(localStorage.getItem('registeredGestures')) || [];
+    const SIMILARITY_THRESHOLD = 0.1; // Limiar para reconhecimento
 
-        // --- persistência ---
-        function loadCustomGestures() {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : {};
-            } catch (e) { console.error(e); return {}; }
-        }
-        function saveCustomGestures(obj) {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); } catch(e){ console.error(e); }
-        }
-        function addGestureSample(name, flatLandmarks) {
-            const store = loadCustomGestures();
-            const key = name.toUpperCase();
-            if (!store[key]) store[key] = [];
-            store[key].push(flatLandmarks);
-            saveCustomGestures(store);
-            renderSavedList();
-        }
-        function clearSavedGestures() {
-            localStorage.removeItem(STORAGE_KEY);
-            renderSavedList();
-        }
-        function renderSavedList() {
-            const store = loadCustomGestures();
-            gesturesListEl.innerHTML = '';
-            let count = 0;
-            for (const [name, samples] of Object.entries(store)) {
-                count += samples.length;
-                const div = document.createElement('div');
-                div.className = 'gesture-item';
-                div.innerHTML = `<strong>${name}</strong><span class="small">${samples.length} amostras</span>`;
-                gesturesListEl.appendChild(div);
+    // Migrar dados antigos se necessário
+    registeredGestures = registeredGestures.map(gesture => {
+      if (gesture.landmarks && !gesture.samples) {
+        return { letter: gesture.letter, samples: [gesture.landmarks] };
+      }
+      return gesture;
+    });
+
+    // Faces registradas: array de {name, landmarks}
+    let registeredFaces = JSON.parse(localStorage.getItem('registeredFaces')) || [];
+    const FACE_SIMILARITY_THRESHOLD = 0.05; // Limiar para reconhecimento facial
+
+    // Função para atualizar a lista de dados salvos
+    function updateDataList() {
+      gesturesList.innerHTML = '';
+      registeredGestures.forEach((gesture, index) => {
+        const li = document.createElement('li');
+        li.textContent = `Letra: ${gesture.letter} (${gesture.samples.length} amostras)`;
+        gesturesList.appendChild(li);
+      });
+
+      facesList.innerHTML = '';
+      registeredFaces.forEach((face, index) => {
+        const li = document.createElement('li');
+        li.textContent = `Nome: ${face.name}`;
+        facesList.appendChild(li);
+      });
+    }
+
+    // Inicializar a lista
+    updateDataList();
+
+    // --- HANDS SETUP ---
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6,
+    });
+
+    // --- FACEMESH SETUP ---
+    const faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`,
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 2,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6,
+    });
+
+    let lastHandResults = null;
+    let lastFaceResults = null;
+
+    // Função para calcular similaridade entre dois arrays de landmarks
+    function calculateSimilarity(landmarks1, landmarks2) {
+      if (landmarks1.length !== landmarks2.length) return Infinity;
+      let sum = 0;
+      for (let i = 0; i < landmarks1.length; i++) {
+        const dx = landmarks1[i].x - landmarks2[i].x;
+        const dy = landmarks1[i].y - landmarks2[i].y;
+        const dz = landmarks1[i].z - landmarks2[i].z;
+        sum += Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+      return sum / landmarks1.length;
+    }
+
+    // --- DESENHO ---
+    function drawResults(handResults, faceResults) {
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+      // Desenha rosto e reconhece faces
+      if (faceResults && faceResults.multiFaceLandmarks) {
+        for (const landmarks of faceResults.multiFaceLandmarks) {
+          if (showLines) {
+            drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, { color: '#e70000', lineWidth: 0.5 });
+            drawConnectors(canvasCtx, landmarks, FACEMESH_CONTOURS, { color: '#1be700', lineWidth: 1 });
+          }
+
+          // Reconhecer face
+          for (const face of registeredFaces) {
+            const similarity = calculateSimilarity(landmarks, face.landmarks);
+            if (similarity < FACE_SIMILARITY_THRESHOLD) {
+              // Calcular posição média do rosto para exibir o nome
+              let sumX = 0, sumY = 0;
+              for (const lm of landmarks) {
+                sumX += lm.x;
+                sumY += lm.y;
+              }
+              const centerX = (sumX / landmarks.length) * canvasElement.width;
+              const centerY = (sumY / landmarks.length) * canvasElement.height;
+
+              // Exibir o nome
+              canvasCtx.fillStyle = '#ffffff';
+              canvasCtx.font = '24px Arial';
+              canvasCtx.strokeStyle = '#000000';
+              canvasCtx.lineWidth = 2;
+              canvasCtx.strokeText(face.name, centerX - 30, centerY - 50);
+              canvasCtx.fillText(face.name, centerX - 30, centerY - 50);
+              break; // Exibir apenas a primeira correspondência
             }
-            totalSavedEl.textContent = count;
+          }
         }
+      }
 
-        // --- normalização e comparação ---
-        function flattenLandmarks(landmarks) {
-            const flat = [];
-            for (const lm of landmarks) flat.push(lm.x, lm.y, lm.z ?? 0);
-            return flat;
-        }
-        function normalizeFlat(flat) {
-            if (!flat || flat.length < 6) return flat;
-            const pts = [];
-            for (let i = 0; i < flat.length; i += 3) pts.push([flat[i], flat[i+1]]);
-            const ref = pts[0];
-            const translated = pts.map(p => [p[0]-ref[0], p[1]-ref[1]]);
-            let maxd = 0;
-            for (const p of translated) { const d = Math.hypot(p[0], p[1]); if (d > maxd) maxd = d; }
-            if (maxd === 0) maxd = 1;
-            const norm = [];
-            for (const p of translated) norm.push(p[0]/maxd, p[1]/maxd);
-            return norm;
-        }
-        function meanDistance(normA, normB) {
-            if (!normA || !normB || normA.length !== normB.length) return Infinity;
-            let sum = 0;
-            for (let i = 0; i < normA.length; i++) { const d = normA[i]-normB[i]; sum += d*d; }
-            return Math.sqrt(sum / (normA.length/2));
-        }
-        function matchCustomGesture(landmarks) {
-            const flat = flattenLandmarks(landmarks);
-            const norm = normalizeFlat(flat);
-            const store = loadCustomGestures();
-            let best = { name: null, distance: Infinity };
-            for (const [name, samples] of Object.entries(store)) {
-                for (const sampleFlat of samples) {
-                    const sampleNorm = normalizeFlat(sampleFlat);
-                    const dist = meanDistance(norm, sampleNorm);
-                    if (dist < best.distance) best = { name, distance: dist };
-                }
+      // Desenha mãos e reconhece gestos
+      if (handResults && handResults.multiHandLandmarks) {
+        for (const landmarks of handResults.multiHandLandmarks) {
+          if (showLines) drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#e70000', lineWidth: 3 });
+          if (showPoints) drawLandmarks(canvasCtx, landmarks, { color: '#1be700', lineWidth: 1, radius: 2 });
+
+          // Reconhecer gesto
+          for (const gesture of registeredGestures) {
+            // Calcular similaridade com todas as amostras
+            let minSimilarity = Infinity;
+            for (const sample of gesture.samples) {
+              const similarity = calculateSimilarity(landmarks, sample);
+              if (similarity < minSimilarity) minSimilarity = similarity;
             }
-            if (best.name && best.distance < MATCH_THRESHOLD) return best;
-            return null;
-        }
+            if (minSimilarity < SIMILARITY_THRESHOLD) {
+              // Calcular posição média da mão para exibir a letra
+              let sumX = 0, sumY = 0;
+              for (const lm of landmarks) {
+                sumX += lm.x;
+                sumY += lm.y;
+              }
+              const centerX = (sumX / landmarks.length) * canvasElement.width;
+              const centerY = (sumY / landmarks.length) * canvasElement.height;
 
-        // --- Fingerpose gestures (predefinidos) ---
-        class GestureALibras extends fp.GestureDescription {
-            constructor() { super('LETRA_A_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.FullCurl, 1.0); this.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.HorizontalLeft, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.HorizontalRight, 1.0); }
-        }
-        class GestureBLibras extends fp.GestureDescription {
-            constructor() { super('LETRA_B_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) { this.addCurl(f, fp.FingerCurl.NoCurl, 1.0); this.addDirection(f, fp.FingerDirection.VerticalUp, 1.0); } this.addCurl(fp.Finger.Thumb, fp.FingerCurl.FullCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalDownLeft, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalDownRight, 0.9); }
-        }
-        class GestureCLibras extends fp.GestureDescription {
-            constructor() { super('LETRA_C_LIBRAS'); for (let f of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) { this.addCurl(f, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(f, fp.FingerDirection.HorizontalLeft, 0.7); this.addDirection(f, fp.FingerDirection.HorizontalRight, 0.7); } this.addCurl(fp.Finger.Thumb, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.VerticalUp, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.9); }
-        }
-        class GestureDLibras extends fp.GestureDescription {
-            constructor() { super('LETRA_D_LIBRAS'); this.addCurl(fp.Finger.Index, fp.FingerCurl.NoCurl, 1.0); this.addDirection(fp.Finger.Index, fp.FingerDirection.VerticalUp, 1.0); for (let f of [fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.FullCurl, 1.0); this.addCurl(fp.Finger.Thumb, fp.FingerCurl.HalfCurl, 0.9); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.7); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.7); }
-        }
-        class GestureOLibras extends fp.GestureDescription {
-            constructor() { super('LETRA_O_LIBRAS'); for (let f of [fp.Finger.Thumb, fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) this.addCurl(f, fp.FingerCurl.HalfCurl, 1.0); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpRight, 0.7); this.addDirection(fp.Finger.Thumb, fp.FingerDirection.DiagonalUpLeft, 0.7); }
-        }
-
-        const gestures = [ new GestureALibras(), new GestureBLibras(), new GestureCLibras(), new GestureDLibras(), new GestureOLibras() ];
-        const GE = new fp.GestureEstimator(gestures);
-
-        // --- MediaPipe Hands ---
-        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
-        hands.onResults(onResults);
-
-        function onResults(results) {
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            if (results.image) canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                lastKnownLandmarks = landmarks;
-
-                // Fingerpose estimate
-                const poseData = landmarks.map(lm => [lm.x * canvasElement.width, lm.y * canvasElement.height, lm.z * canvasElement.width]);
-                const predictions = GE.estimate(poseData, 7.5);
-                let detectedGesture = "Mão detectada. Gesto desconhecido.";
-
-                if (predictions.gestures && predictions.gestures.length > 0) {
-                    const best = predictions.gestures.reduce((p,c) => p.score>c.score? p:c);
-                    if (best.score > 8.5) {
-                        let name = best.name;
-                        if (name === 'LETRA_O_LIBRAS' && landmarks[0].y < 0.5) name = 'SINAL_OI_LIBRAS';
-                        detectedGesture = `✨ Sinal: ${name.replace('_LIBRAS','')} (FP: ${best.score.toFixed(2)})`;
-                    }
-                }
-
-                // Try matching saved custom gestures
-                const custom = matchCustomGesture(landmarks);
-                if (custom) {
-                    detectedGesture = `✅ Gest. salvo: ${custom.name} (dist ${custom.distance.toFixed(3)})`;
-                }
-
-                transcriptionText.textContent = detectedGesture;
-
-                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#FF4444', lineWidth: 4 });
-                drawLandmarks(canvasCtx, landmarks, { color: '#7B68EE', lineWidth: 2, radius: 4 });
-            } else {
-                lastKnownLandmarks = null;
-                transcriptionText.textContent = "Nenhuma mão detectada. Posicione a mão na frente da câmera.";
+              // Exibir a letra
+              canvasCtx.fillStyle = '#ffffff';
+              canvasCtx.font = '48px Arial';
+              canvasCtx.strokeStyle = '#000000';
+              canvasCtx.lineWidth = 2;
+              canvasCtx.strokeText(gesture.letter, centerX - 12, centerY + 12);
+              canvasCtx.fillText(gesture.letter, centerX - 12, centerY + 12);
+              break; // Exibir apenas a primeira correspondência
             }
-            canvasCtx.restore();
+          }
         }
+      }
 
-        // --- iniciar câmera ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const camera = new Camera(webcam, {
-                onFrame: async () => { await hands.send({ image: webcam }); },
-                width: 640, height: 480
-            });
-            camera.start().then(() => {
-                transcriptionText.textContent = "Câmera iniciada. Posicione a mão.";
-                // ajustar canvas ao vídeo
-                canvasElement.width = webcam.clientWidth;
-                canvasElement.height = webcam.clientHeight;
-                renderSavedList();
-            }).catch((e) => {
-                console.error('Erro ao iniciar câmera:', e);
-                transcriptionText.textContent = 'ERRO ao iniciar a câmera. Rode via http://localhost ou HTTPS e permita a câmera.';
-            });
+      canvasCtx.restore();
+    }
+
+    // --- PROCESSAMENTO EM PARALELO ---
+    hands.onResults((results) => {
+      lastHandResults = results;
+      if (lastFaceResults) drawResults(results, lastFaceResults);
+    });
+
+    faceMesh.onResults((results) => {
+      lastFaceResults = results;
+      if (lastHandResults) drawResults(lastHandResults, results);
+    });
+
+    // --- CÂMERA ---
+    toggleButton.addEventListener('click', () => {
+      if (!cameraActive) {
+        camera = new Camera(videoElement, {
+          onFrame: async () => {
+            await hands.send({ image: videoElement });
+            await faceMesh.send({ image: videoElement });
+          },
+          width: 640,
+          height: 480,
         });
+        camera.start();
+        toggleButton.textContent = 'Desativar Câmera';
+        cameraActive = true;
+      } else {
+        if (camera) camera.stop();
+        toggleButton.textContent = 'Ativar Câmera';
+        cameraActive = false;
+      }
+    });
 
-        // --- cadastro de gesto ---
-        cadastrarGestoButton.addEventListener('click', () => {
-            if (!lastKnownLandmarks) {
-                transcriptionText.textContent = "Nenhuma mão detectada. Posicione a mão e tente novamente.";
-                return;
-            }
-            const name = prompt('Nome do gesto (ex: MEU_SINAL):');
-            if (!name) { transcriptionText.textContent = 'Cadastro cancelado.'; return; }
-            const flat = flattenLandmarks(lastKnownLandmarks);
-            addGestureSample(name.trim().toUpperCase(), flat);
-            transcriptionText.textContent = `✅ Amostra adicionada para "${name.trim().toUpperCase()}"`;
-        });
+    // Toggle das linhas e pontos
+    toggleLinesButton.addEventListener('click', () => {
+      showLines = !showLines;
+      showPoints = !showPoints;
+      toggleLinesButton.textContent = showLines ? 'ON' : 'OFF';
+    });
 
-        limparGestosButton.addEventListener('click', () => {
-            if (!confirm('Deseja remover todos os gestos salvos?')) return;
-            clearSavedGestures();
-            transcriptionText.textContent = 'Gestos salvos limpos.';
-        });
+    // Cadastrar Libras
+    cadastrarButton.addEventListener('click', () => {
+      if (!lastHandResults || !lastHandResults.multiHandLandmarks || lastHandResults.multiHandLandmarks.length === 0) {
+        alert('Nenhuma mão detectada. Posicione a mão na frente da câmera e tente novamente.');
+        return;
+      }
 
-        // --- inicial render ---
-        renderSavedList();
-    </script>
+      const letter = prompt('Digite a letra correspondente ao gesto:');
+      if (!letter || letter.trim() === '') {
+        alert('Letra inválida.');
+        return;
+      }
+
+      const upperLetter = letter.trim().toUpperCase();
+
+      // Verificar se a letra já existe
+      let existingGesture = registeredGestures.find(g => g.letter === upperLetter);
+      if (!existingGesture) {
+        // Criar novo gesto com amostras
+        existingGesture = { letter: upperLetter, samples: [] };
+        registeredGestures.push(existingGesture);
+      }
+
+      // Adicionar nova amostra
+      const landmarks = lastHandResults.multiHandLandmarks[0];
+      existingGesture.samples.push(JSON.parse(JSON.stringify(landmarks)));
+
+      // Salvar no localStorage
+      localStorage.setItem('registeredGestures', JSON.stringify(registeredGestures));
+
+      // Atualizar a lista
+      updateDataList();
+
+      alert(`Amostra para a letra "${upperLetter}" cadastrada com sucesso! Total de amostras: ${existingGesture.samples.length}`);
+    });
+
+    // Cadastrar Faces
+    cadastrarFacesButton.addEventListener('click', () => {
+      if (!lastFaceResults || !lastFaceResults.multiFaceLandmarks || lastFaceResults.multiFaceLandmarks.length === 0) {
+        alert('Nenhum rosto detectado. Posicione o rosto na frente da câmera e tente novamente.');
+        return;
+      }
+
+      const name = prompt('Digite o nome da pessoa:');
+      if (!name || name.trim() === '') {
+        alert('Nome inválido.');
+        return;
+      }
+
+      // Usar o primeiro rosto detectado
+      const landmarks = lastFaceResults.multiFaceLandmarks[0];
+      registeredFaces.push({ name: name.trim(), landmarks: JSON.parse(JSON.stringify(landmarks)) });
+
+      // Salvar no localStorage
+      localStorage.setItem('registeredFaces', JSON.stringify(registeredFaces));
+
+      // Atualizar a lista
+      updateDataList();
+
+      alert(`Face de "${name.trim()}" cadastrada com sucesso!`);
+    });
+
+    // Limpar Dados
+    limparDadosButton.addEventListener('click', () => {
+      if (confirm('Tem certeza de que deseja limpar todos os dados salvos (gestos e faces)?')) {
+        localStorage.removeItem('registeredGestures');
+        localStorage.removeItem('registeredFaces');
+        registeredGestures = [];
+        registeredFaces = [];
+        updateDataList();
+        alert('Dados limpos com sucesso!');
+      }
+    });
+  </script>
 </body>
 </html>
