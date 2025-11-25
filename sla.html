@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reconhecimento de Gestos por Classificação de Imagem</title>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e8e8e8;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      background-color: #fef9e7;
+      border: 4px solid #7b68ee;
+      border-radius: 8px;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ff4444;
+      flex-wrap: wrap;
+    }
+    header h1 { color: #7b68ee; font-size: 2.5em; margin: 0; }
+    header p { color: #ff4444; font-size: 1.2em; font-weight: 500; }
+    header .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    main {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 40px;
+    }
+    .data-list {
+      background-color: #ffffff;
+      border: 2px solid #7b68ee;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .data-list h3 { margin-top: 0; color: #7b68ee; }
+    #output { font-size: 3em; color: #ff4444; font-weight: bold; margin-top: 15px; }
+    .camera-area {
+      position: relative;
+      width: 640px;
+      height: 480px;
+      border: 3px solid #e70000;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #000;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    }
+    .input_video, .output_canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .output_canvas { z-index: 10; transform: scaleX(-1); }
+    .input_video { transform: scaleX(-1); }
+    .speak-button {
+      background-color: #7b68ee;
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.15s;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.18);
+    }
+    .speak-button:hover {
+      background-color: #5a4bcf;
+      transform: translateY(-2px);
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.13.0/dist/tf.min.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Reconhecimento de Gestos por Classificação</h1>
+      <div class="buttons">
+        <button id="toggleCamera" class="speak-button">Ativar Câmera</button>
+        <button id="toggleLines" class="speak-button">ON</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="camera-area">
+        <video class="input_video" id="input_video" autoplay playsinline></video>
+        <canvas class="output_canvas" id="output_canvas" width="640" height="480"></canvas>
+      </div>
+      <div class="data-list">
+        <h3>Gesto Reconhecido</h3>
+        <p id="output">Nenhum</p>
+        <p style="font-size: 0.8em; color: #777;">(Usando modelo Keras)</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const toggleButton = document.getElementById('toggleCamera');
+    const toggleLinesButton = document.getElementById('toggleLines');
+    const outputText = document.getElementById('output');
+    
+    // Configurações do modelo
+    let model = null;
+    const CLASSES = ['A', 'B', 'C', 'D', 'E']; // Classes do seu modelo
+    const MODEL_PATH = 'tfjs_model/model.json'; // Caminho para o seu modelo TF.js convertido
+    const MODEL_SIZE = 224;
+    const PADDING = 50; // Adiciona 50px de padding, igual ao seu código Python
+
+    let showLines = true;
+    let showPoints = true;
+    let cameraActive = false;
+    let camera = null;
+    let lastHandResults = null;
+
+    // 1. Carregar o Modelo
+    async function loadModel() {
+        outputText.textContent = 'Carregando Modelo...';
+        try {
+            model = await tf.loadLayersModel(MODEL_PATH);
+            outputText.textContent = 'Modelo Pronto!';
+            console.log('Modelo TensorFlow.js carregado com sucesso.');
+        } catch (error) {
+            console.error('Erro ao carregar o modelo:', error);
+            outputText.textContent = 'ERRO: Modelo não carregado';
+            alert(`Erro ao carregar o modelo. Verifique se a pasta ${MODEL_PATH} existe.`);
+        }
+    }
+    loadModel();
+
+    // --- HANDS SETUP (Para localização da mão) ---
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
+    });
+    hands.setOptions({
+      maxNumHands: 1, // Apenas uma mão para o reconhecimento
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7,
+    });
+
+    // Função para obter o array de pixels recortado e normalizado
+    function preprocessAndPredict(x_min, y_min, x_max, y_max, padding) {
+        if (!model) return 'Carregando...';
+
+        const w = canvasElement.width;
+        const h = canvasElement.height;
+        
+        // Aplica o padding e garante que os limites estão dentro do canvas
+        let x_start = Math.max(0, x_min - padding);
+        let y_start = Math.max(0, y_min - padding);
+        let width = Math.min(w, x_max + padding) - x_start;
+        let height = Math.min(h, y_max + padding) - y_start;
+
+        if (width <= 0 || height <= 0) return 'Erro de recorte';
+
+        // Cria um canvas temporário para desenhar a imagem recortada
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Desenha a seção recortada do canvas principal (que contém a imagem da câmera)
+        // Usamos o canvas principal, pois ele já tem o vídeo espelhado
+        tempCtx.drawImage(canvasElement, 
+                          x_start, y_start, width, height, // Fonte (canvas original)
+                          0, 0, width, height // Destino (canvas temporário)
+                          );
+
+        let imgTensor = tf.browser.fromPixels(tempCanvas)
+            .resizeNearestNeighbor([MODEL_SIZE, MODEL_SIZE]) // Redimensiona para 224x224
+            .toFloat(); // Converte para Float (necessário para normalização)
+
+        // Normalização similar ao Python: (img / 127.0) - 1
+        imgTensor = imgTensor.div(tf.scalar(127.0)).sub(tf.scalar(1.0));
+        
+        // Adiciona a dimensão do batch: [224, 224, 3] -> [1, 224, 224, 3]
+        const batchedImage = imgTensor.expandDims(0);
+        
+        // Faz a previsão
+        const prediction = model.predict(batchedImage);
+        const scores = prediction.dataSync();
+        const predictedIndex = scores.indexOf(Math.max(...scores));
+        
+        // Limpeza de memória do TF
+        tf.dispose([imgTensor, batchedImage, prediction]);
+        
+        // Retorna a letra prevista
+        return CLASSES[predictedIndex];
+    }
+
+    // --- DESENHO e RECONHECIMENTO ---
+    function drawAndClassify(handResults) {
+      const w = canvasElement.width;
+      const h = canvasElement.height;
+      
+      // Desenha o vídeo espelhado (transformação já definida no CSS)
+      canvasCtx.clearRect(0, 0, w, h);
+      canvasCtx.drawImage(videoElement, 0, 0, w, h);
+      
+      let recognizedLetter = 'Nenhum';
+      
+      if (handResults && handResults.multiHandLandmarks) {
+        // Assume apenas a primeira mão (maxNumHands: 1)
+        const landmarks = handResults.multiHandLandmarks[0];
+        
+        // 1. Localizar e Desenhar a Mão
+        let x_max = 0, y_max = 0, x_min = w, y_min = h;
+        for (const lm of landmarks) {
+            // Os landmarks do MediaPipe vêm normalizados (0 a 1)
+            const x = lm.x * w;
+            const y = lm.y * h;
+            
+            if (x > x_max) x_max = x;
+            if (x < x_min) x_min = x;
+            if (y > y_max) y_max = y;
+            if (y < y_min) y_min = y;
+        }
+
+        // Desenha a caixa delimitadora (igual ao seu código Python)
+        canvasCtx.beginPath();
+        canvasCtx.rect(x_min - PADDING, y_min - PADDING, 
+                       (x_max - x_min) + 2 * PADDING, (y_max - y_min) + 2 * PADDING);
+        canvasCtx.strokeStyle = '#00FF00';
+        canvasCtx.lineWidth = 2;
+        canvasCtx.stroke();
+        
+        if (showLines) drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#e70000', lineWidth: 3 });
+        if (showPoints) drawLandmarks(canvasCtx, landmarks, { color: '#1be700', lineWidth: 1, radius: 2 });
+        
+        // 2. Classificar
+        try {
+            recognizedLetter = preprocessAndPredict(x_min, y_min, x_max, y_max, PADDING);
+        } catch (e) {
+            console.error('Erro na classificação:', e);
+            recognizedLetter = 'ERRO';
+        }
+
+        // 3. Exibir a Letra
+        canvasCtx.fillStyle = '#FFFFFF';
+        canvasCtx.font = '48px Arial';
+        canvasCtx.strokeStyle = '#000000';
+        canvasCtx.lineWidth = 2;
+        
+        // Posição: acima da caixa delimitadora
+        canvasCtx.strokeText(recognizedLetter, x_min - PADDING, y_min - PADDING - 15);
+        canvasCtx.fillText(recognizedLetter, x_min - PADDING, y_min - PADDING - 15);
+
+      } 
+      
+      // Atualiza o output HTML
+      outputText.textContent = recognizedLetter;
+    }
+
+    // --- PROCESSAMENTO ---
+    hands.onResults((results) => {
+      lastHandResults = results;
+      drawAndClassify(results);
+    });
+
+    // --- CÂMERA ---
+    toggleButton.addEventListener('click', () => {
+      if (!cameraActive) {
+        camera = new Camera(videoElement, {
+          onFrame: async () => {
+            if (model) await hands.send({ image: videoElement });
+          },
+          width: 640,
+          height: 480,
+        });
+        camera.start();
+        toggleButton.textContent = 'Desativar Câmera';
+        cameraActive = true;
+      } else {
+        if (camera) camera.stop();
+        toggleButton.textContent = 'Ativar Câmera';
+        cameraActive = false;
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); 
+        outputText.textContent = 'Nenhum';
+      }
+    });
+
+    // Toggle das linhas e pontos
+    toggleLinesButton.addEventListener('click', () => {
+      showLines = !showLines;
+      showPoints = !showPoints;
+      toggleLinesButton.textContent = showLines ? 'ON' : 'OFF';
+    });
+    
+    // Removidos os botões de cadastro e limpeza de dados, pois a lógica agora é de classificação por modelo, não por salvamento de landmarks no navegador.
+  </script>
+</body>
+</html>
