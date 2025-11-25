@@ -1,419 +1,436 @@
-<!DOCTYPE html>
+<!DOCTYPE
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reconhecimento Facial e das Mãos</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>IncluIAê - Tradutor de Gestos e Faces (Estático e Dinâmico)</title>
+    <meta name="description" content="Tecnologia de reconhecimento de gestos e faces com IA para inclusão e acessibilidade" />
+    <link rel="stylesheet" href="style.css" />
 
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #e8e8e8;
-      padding: 20px;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-    .container {
-      width: 100%;
-      max-width: 1200px;
-      background-color: #fef9e7;
-      border: 4px solid #7b68ee;
-      border-radius: 8px;
-      min-height: 600px;
-      display: flex;
-      flex-direction: column;
-      padding: 30px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 20px;
-      margin-bottom: 20px;
-      border-bottom: 2px solid #ff4444;
-      flex-wrap: wrap;
-    }
-    header h1 { color: #7b68ee; font-size: 2.5em; margin: 0; }
-    header p { color: #ff4444; font-size: 1.2em; font-weight: 500; }
-    header .buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-    main {
-      display: flex;
-      flex: 1;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 40px;
-    }
-    .data-list {
-      background-color: #ffffff;
-      border: 2px solid #7b68ee;
-      border-radius: 8px;
-      padding: 20px;
-      max-width: 300px;
-      max-height: 400px;
-      overflow-y: auto;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    .data-list h3 { margin-top: 0; color: #7b68ee; }
-    .data-list ul { list-style: none; padding: 0; }
-    .data-list li { padding: 5px 0; border-bottom: 1px solid #eee; }
-    .camera-area {
-      position: relative;
-      width: 640px;
-      height: 480px;
-      border: 3px solid #e70000;
-      border-radius: 8px;
-      overflow: hidden;
-      background-color: #000;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-    }
-    .input_video, .output_canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-    }
-    .output_canvas { z-index: 10; }
-    .speak-button {
-      background-color: #7b68ee;
-      color: #ffffff;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 30px;
-      font-size: 0.95em;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.15s;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.18);
-    }
-    .speak-button:hover {
-      background-color: #5a4bcf;
-      transform: translateY(-2px);
-    }
-  </style>
-
-  <!-- MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
-
 <body>
-  <div class="container">
-    <header>
-      <h1>Reconhecimento Facial e das Mãos</h1>
-      <div class="buttons">
-        <button id="toggleCamera" class="speak-button">Ativar Câmera</button>
-        <button id="toggleLines" class="speak-button">ON</button>
-        <button id="cadastrarLibras" class="speak-button">Cadastrar Libras</button>
-        <button id="cadastrarFaces" class="speak-button">Cadastrar Faces</button>
-        <button id="limparDados" class="speak-button">Limpar Dados</button>
-      </div>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="Vetor Logo.png" alt="IncluIAê Logo" class="logo-img" onerror="this.style.display='none'">
+                    <span class="brand-title">IncluIAê</span>
+                </div>
+                <div class="badge">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <span>Tradutor de Gestos e Faces</span>
+                </div>
+            </div>
+        </div>
     </header>
 
-    <main>
-      <div class="camera-area">
-        <video class="input_video" id="input_video" autoplay playsinline></video>
-        <canvas class="output_canvas" id="output_canvas" width="640" height="480"></canvas>
-      </div>
-      <div class="data-list">
-        <h3>Gestos Registrados</h3>
-        <ul id="gesturesList"></ul>
-        <h3>Faces Registradas</h3>
-        <ul id="facesList"></ul>
-      </div>
-    </main>
-  </div>
+    <main class="main-content">
+        <div class="container">
+            <div class="grid">
+                <div class="video-section">
+                    <div class="section-header">
+                        <div class="icon-circle icon-circle-primary">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="section-title">Detecção em Tempo Real</h2>
+                            <p class="section-subtitle" id="detectionSubtitle">Pressione Iniciar Câmera para começar</p>
+                        </div>
+                    </div>
 
-  <script>
+                    <div class="video-card">
+                        <div class="video-feed-container" style="position:relative;">
+                            <video class="input_video" id="input_video" autoplay playsinline muted style="display:none;"></video>
+                            <canvas class="output_canvas" id="output_canvas" width="640" height="480" style="width:100%; height:auto; background:#000;"></canvas>
+
+                            <div class="video-placeholder" id="videoPlaceholder" style="position:absolute; left:0; top:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+                                <div id="initial-status" style="text-align:center; color:#fff;">
+                                    <div class="hand-indicator" style="margin-bottom:12px;">
+                                        <div class="pulse-ring" style="width:72px; height:72px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); margin:0 auto;"></div>
+                                        <svg class="icon hand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:48px; height:48px; margin-top:-60px;">
+                                            <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+                                            <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+                                            <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+                                            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+                                        </svg>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="status-title" style="font-weight:700;">Pronto para iniciar</p>
+                                        <p class="status-text">Clique em Iniciar Câmera para começar</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="camera-indicator" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                            <div class="status-dot inactive" id="statusDot" style="width:12px; height:12px; border-radius:50%; background:#e74c3c;"></div>
+                            <span class="status-label" id="statusLabel">Inativo</span>
+                        </div>
+
+                        <div class="recording-progress" id="recordingProgress" style="display: none; margin-top:8px;">
+                            <div class="progress-bar" style="background:#eee; width:100%; height:10px; border-radius:6px; overflow:hidden;">
+                                <div class="progress-fill" id="progressFill" style="height:100%; width:0%; background:#4caf50;"></div>
+                            </div>
+                            <span class="progress-text" id="progressText" style="display:block; margin-top:6px;">Gravando...</span>
+                        </div>
+                    </div>
+
+                    <div class="button-group" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-primary" id="toggleCamera">Iniciar Câmera</button>
+                        <button class="btn btn-secondary" id="cadastrarLibras">Cadastrar Gesto (Libras)</button>
+                        <button class="btn btn-secondary" id="cadastrarFaces">Cadastrar Face</button>
+                        <button class="btn btn-warning" id="pararCadastro">Parar Cadastro</button>
+                    </div>
+
+                    <div class="control-group" style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <label class="control-item" style="display:flex; align-items:center; gap:6px;">
+                            <input type="checkbox" id="ttsToggle" checked> Ativar Voz (TTS)
+                        </label>
+                        <button class="btn btn-outline-danger" id="limparDados">Limpar Dados</button>
+                        <label class="control-item" style="display:flex; align-items:center; gap:6px;">
+                            <input type="checkbox" id="toggleLines" checked> Mostrar Desenho
+                        </label>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <div class="section-header">
+                        <div class="icon-circle icon-circle-secondary">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="section-title">Status e Dados</h2>
+                            <p class="section-subtitle">Gestão de conhecimento do sistema</p>
+                        </div>
+                    </div>
+
+                    <div class="info-card" style="margin-top:8px;">
+                        <div class="status-display" id="recognitionStatus" style="padding:8px; background:#f5f5f5; border-radius:6px;">
+                            Status: Aguardando Início...
+                        </div>
+
+                        <div class="status-display" id="currentSentenceDisplay" style="margin-top:8px; min-height:48px; padding:8px; background:#fff; border-radius:6px; border:1px solid #eee;">
+                            <!-- conteúdo dinâmico -->
+                        </div>
+
+                        <div style="margin-top:12px;">
+                            <h3>Dados cadastrados</h3>
+                            <ul id="gesturesList"></ul>
+                            <ul id="facesList"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+(function(){
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
-    const toggleButton = document.getElementById('toggleCamera');
-    const toggleLinesButton = document.getElementById('toggleLines');
-    const cadastrarButton = document.getElementById('cadastrarLibras');
-    const cadastrarFacesButton = document.getElementById('cadastrarFaces');
-    const limparDadosButton = document.getElementById('limparDados');
+
+    const statusDot = document.getElementById('statusDot');
+    const statusLabel = document.getElementById('statusLabel');
+    const detectionSubtitle = document.getElementById('detectionSubtitle');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+
+    const toggleCameraBtn = document.getElementById('toggleCamera');
+    const cadastrarLibrasBtn = document.getElementById('cadastrarLibras');
+    const cadastrarFacesBtn = document.getElementById('cadastrarFaces');
+    const pararCadastroBtn = document.getElementById('pararCadastro');
+    const limparDadosBtn = document.getElementById('limparDados');
+    const toggleLinesCheckbox = document.getElementById('toggleLines');
+    const ttsToggle = document.getElementById('ttsToggle');
+
+    const recordingProgress = document.getElementById('recordingProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    const recognitionStatus = document.getElementById('recognitionStatus');
+    const currentSentenceDisplay = document.getElementById('currentSentenceDisplay');
     const gesturesList = document.getElementById('gesturesList');
     const facesList = document.getElementById('facesList');
 
-    let showLines = true;
-    let showPoints = true;
-
-    let cameraActive = false;
     let camera = null;
+    let running = false;
 
-    // Gestos registrados: array de {letter, samples: [landmarks]}
-    let registeredGestures = JSON.parse(localStorage.getItem('registeredGestures')) || [];
-    const SIMILARITY_THRESHOLD = 0.1; // Limiar para reconhecimento
+    // storage for registrations
+    const gesturesDB = [];
+    const facesDB = [];
 
-    // Migrar dados antigos se necessário
-    registeredGestures = registeredGestures.map(gesture => {
-      if (gesture.landmarks && !gesture.samples) {
-        return { letter: gesture.letter, samples: [gesture.landmarks] };
-      }
-      return gesture;
-    });
+    let registering = false;
+    let registerMode = null; // 'gesture' or 'face'
+    let registerFrames = [];
+    let registerStart = 0;
+    const REGISTER_DURATION_MS = 3000;
 
-    // Faces registradas: array de {name, landmarks}
-    let registeredFaces = JSON.parse(localStorage.getItem('registeredFaces')) || [];
-    const FACE_SIMILARITY_THRESHOLD = 0.05; // Limiar para reconhecimento facial
-
-    // Função para atualizar a lista de dados salvos
-    function updateDataList() {
-      gesturesList.innerHTML = '';
-      registeredGestures.forEach((gesture, index) => {
-        const li = document.createElement('li');
-        li.textContent = `Letra: ${gesture.letter} (${gesture.samples.length} amostras)`;
-        gesturesList.appendChild(li);
-      });
-
-      facesList.innerHTML = '';
-      registeredFaces.forEach((face, index) => {
-        const li = document.createElement('li');
-        li.textContent = `Nome: ${face.name}`;
-        facesList.appendChild(li);
-      });
-    }
-
-    // Inicializar a lista
-    updateDataList();
-
-    // --- HANDS SETUP ---
+    // initialize MediaPipe Hands
     const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`,
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
     });
     hands.setOptions({
-      maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
     });
 
-    // --- FACEMESH SETUP ---
+    // initialize FaceMesh
     const faceMesh = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`,
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`
     });
     faceMesh.setOptions({
-      maxNumFaces: 2,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
     });
 
-    let lastHandResults = null;
+    // results handling
+    function onResults(resultsHands, resultsFace) {
+        // clear canvas
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        // draw image
+        if (resultsHands && resultsHands.image) {
+            canvasCtx.drawImage(resultsHands.image, 0, 0, canvasElement.width, canvasElement.height);
+        } else if (resultsFace && resultsFace.image) {
+            canvasCtx.drawImage(resultsFace.image, 0, 0, canvasElement.width, canvasElement.height);
+        }
+
+        const showLines = toggleLinesCheckbox.checked;
+        if (showLines) {
+            if (resultsFace && resultsFace.multiFaceLandmarks) {
+                for (const landmarks of resultsFace.multiFaceLandmarks) {
+                    drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: '#00FF00', lineWidth: 1});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 0.5, radius: 1});
+                }
+            }
+            if (resultsHands && resultsHands.multiHandLandmarks) {
+                for (const landmarks of resultsHands.multiHandLandmarks) {
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1});
+                }
+            }
+        }
+
+        canvasCtx.restore();
+
+        // registration logic: capture normalized landmark arrays
+        if (registering) {
+            const now = performance.now();
+            // capture a snapshot of current landmarks (hands priority)
+            let snapshot = null;
+            if (resultsHands && resultsHands.multiHandLandmarks && resultsHands.multiHandLandmarks.length) {
+                snapshot = resultsHands.multiHandLandmarks.map(hand => hand.map(p => ({x:p.x, y:p.y, z:p.z})));
+            } else if (resultsFace && resultsFace.multiFaceLandmarks && resultsFace.multiFaceLandmarks.length) {
+                snapshot = resultsFace.multiFaceLandmarks[0].map(p => ({x:p.x, y:p.y, z:p.z}));
+            } else {
+                snapshot = null;
+            }
+            if (snapshot) registerFrames.push({t: now, data: snapshot});
+            const elapsed = now - registerStart;
+            const pct = Math.min(100, (elapsed / REGISTER_DURATION_MS) * 100);
+            progressFill.style.width = pct + '%';
+            if (elapsed >= REGISTER_DURATION_MS) {
+                finishRegistration();
+            }
+        }
+
+        // very simple recognition placeholder: show counts
+        const handsCount = (resultsHands && resultsHands.multiHandLandmarks) ? resultsHands.multiHandLandmarks.length : 0;
+        const facesCount = (resultsFace && resultsFace.multiFaceLandmarks) ? resultsFace.multiFaceLandmarks.length : 0;
+        recognitionStatus.textContent = `Mãos detectadas: ${handsCount} • Faces detectadas: ${facesCount}`;
+    }
+
+    // We will bridge MediaPipe results for both models by calling both and combining data where needed.
+    hands.onResults((rh) => {
+        // call faceMesh.send asynchronously; but results will be handled separately; here call unified drawing using last face results
+        onResults(rh, lastFaceResults);
+    });
+
     let lastFaceResults = null;
-
-    // Função para calcular similaridade entre dois arrays de landmarks
-    function calculateSimilarity(landmarks1, landmarks2) {
-      if (landmarks1.length !== landmarks2.length) return Infinity;
-      let sum = 0;
-      for (let i = 0; i < landmarks1.length; i++) {
-        const dx = landmarks1[i].x - landmarks2[i].x;
-        const dy = landmarks1[i].y - landmarks2[i].y;
-        const dz = landmarks1[i].z - landmarks2[i].z;
-        sum += Math.sqrt(dx * dx + dy * dy + dz * dz);
-      }
-      return sum / landmarks1.length;
-    }
-
-    // --- DESENHO ---
-    function drawResults(handResults, faceResults) {
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-
-      // Desenha rosto e reconhece faces
-      if (faceResults && faceResults.multiFaceLandmarks) {
-        for (const landmarks of faceResults.multiFaceLandmarks) {
-          if (showLines) {
-            drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, { color: '#e70000', lineWidth: 0.5 });
-            drawConnectors(canvasCtx, landmarks, FACEMESH_CONTOURS, { color: '#1be700', lineWidth: 1 });
-          }
-
-          // Reconhecer face
-          for (const face of registeredFaces) {
-            const similarity = calculateSimilarity(landmarks, face.landmarks);
-            if (similarity < FACE_SIMILARITY_THRESHOLD) {
-              // Calcular posição média do rosto para exibir o nome
-              let sumX = 0, sumY = 0;
-              for (const lm of landmarks) {
-                sumX += lm.x;
-                sumY += lm.y;
-              }
-              const centerX = (sumX / landmarks.length) * canvasElement.width;
-              const centerY = (sumY / landmarks.length) * canvasElement.height;
-
-              // Exibir o nome
-              canvasCtx.fillStyle = '#ffffff';
-              canvasCtx.font = '24px Arial';
-              canvasCtx.strokeStyle = '#000000';
-              canvasCtx.lineWidth = 2;
-              canvasCtx.strokeText(face.name, centerX - 30, centerY - 50);
-              canvasCtx.fillText(face.name, centerX - 30, centerY - 50);
-              break; // Exibir apenas a primeira correspondência
-            }
-          }
-        }
-      }
-
-      // Desenha mãos e reconhece gestos
-      if (handResults && handResults.multiHandLandmarks) {
-        for (const landmarks of handResults.multiHandLandmarks) {
-          if (showLines) drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#e70000', lineWidth: 3 });
-          if (showPoints) drawLandmarks(canvasCtx, landmarks, { color: '#1be700', lineWidth: 1, radius: 2 });
-
-          // Reconhecer gesto
-          for (const gesture of registeredGestures) {
-            // Calcular similaridade com todas as amostras
-            let minSimilarity = Infinity;
-            for (const sample of gesture.samples) {
-              const similarity = calculateSimilarity(landmarks, sample);
-              if (similarity < minSimilarity) minSimilarity = similarity;
-            }
-            if (minSimilarity < SIMILARITY_THRESHOLD) {
-              // Calcular posição média da mão para exibir a letra
-              let sumX = 0, sumY = 0;
-              for (const lm of landmarks) {
-                sumX += lm.x;
-                sumY += lm.y;
-              }
-              const centerX = (sumX / landmarks.length) * canvasElement.width;
-              const centerY = (sumY / landmarks.length) * canvasElement.height;
-
-              // Exibir a letra
-              canvasCtx.fillStyle = '#ffffff';
-              canvasCtx.font = '48px Arial';
-              canvasCtx.strokeStyle = '#000000';
-              canvasCtx.lineWidth = 2;
-              canvasCtx.strokeText(gesture.letter, centerX - 12, centerY + 12);
-              canvasCtx.fillText(gesture.letter, centerX - 12, centerY + 12);
-              break; // Exibir apenas a primeira correspondência
-            }
-          }
-        }
-      }
-
-      canvasCtx.restore();
-    }
-
-    // --- PROCESSAMENTO EM PARALELO ---
-    hands.onResults((results) => {
-      lastHandResults = results;
-      if (lastFaceResults) drawResults(results, lastFaceResults);
+    faceMesh.onResults((rf) => {
+        lastFaceResults = rf;
+        // use last hands results from hands (MediaPipe passes images back), but we rely on hands.onResults to handle combined drawing
+        // call onResults with last hands results if available
+        onResults(lastHandsResults, rf);
     });
 
-    faceMesh.onResults((results) => {
-      lastFaceResults = results;
-      if (lastHandResults) drawResults(lastHandResults, results);
+    let lastHandsResults = null;
+    hands.onResults((rh) => {
+        lastHandsResults = rh;
+        onResults(rh, lastFaceResults);
     });
 
-    // --- CÂMERA ---
-    toggleButton.addEventListener('click', () => {
-      if (!cameraActive) {
+    // Camera loop: feed frames to both processors
+    function startCamera() {
+        if (camera) return;
         camera = new Camera(videoElement, {
-          onFrame: async () => {
-            await hands.send({ image: videoElement });
-            await faceMesh.send({ image: videoElement });
-          },
-          width: 640,
-          height: 480,
+            onFrame: async () => {
+                try {
+                    await hands.send({image: videoElement});
+                    await faceMesh.send({image: videoElement});
+                } catch (e) {
+                    console.warn('MP error', e);
+                }
+            },
+            width: 640,
+            height: 480
         });
         camera.start();
-        toggleButton.textContent = 'Desativar Câmera';
-        cameraActive = true;
-      } else {
-        if (camera) camera.stop();
-        toggleButton.textContent = 'Ativar Câmera';
-        cameraActive = false;
-      }
+        running = true;
+        videoElement.style.display = 'block';
+        videoPlaceholder.style.display = 'none';
+        statusDot.style.background = '#2ecc71';
+        statusLabel.textContent = 'Ativo';
+        toggleCameraBtn.textContent = 'Parar Câmera';
+        detectionSubtitle.textContent = 'Detecção em execução';
+    }
+
+    function stopCamera() {
+        if (camera) {
+            camera.stop();
+            camera = null;
+        }
+        running = false;
+        videoElement.style.display = 'none';
+        videoPlaceholder.style.display = 'flex';
+        statusDot.style.background = '#e74c3c';
+        statusLabel.textContent = 'Inativo';
+        toggleCameraBtn.textContent = 'Iniciar Câmera';
+        detectionSubtitle.textContent = 'Pressione Iniciar Câmera para começar';
+    }
+
+    toggleCameraBtn.addEventListener('click', () => {
+        if (!running) startCamera(); else stopCamera();
     });
 
-    // Toggle das linhas e pontos
-    toggleLinesButton.addEventListener('click', () => {
-      showLines = !showLines;
-      showPoints = !showPoints;
-      toggleLinesButton.textContent = showLines ? 'ON' : 'OFF';
+    // registration controls
+    cadastrarLibrasBtn.addEventListener('click', () => {
+        if (!running) { alert('Inicie a câmera antes de cadastrar.'); return; }
+        startRegistration('gesture');
+    });
+    cadastrarFacesBtn.addEventListener('click', () => {
+        if (!running) { alert('Inicie a câmera antes de cadastrar.'); return; }
+        startRegistration('face');
+    });
+    pararCadastroBtn.addEventListener('click', () => {
+        if (registering) stopRegistration();
     });
 
-    // Cadastrar Libras
-    cadastrarButton.addEventListener('click', () => {
-      if (!lastHandResults || !lastHandResults.multiHandLandmarks || lastHandResults.multiHandLandmarks.length === 0) {
-        alert('Nenhuma mão detectada. Posicione a mão na frente da câmera e tente novamente.');
-        return;
-      }
-
-      const letter = prompt('Digite a letra correspondente ao gesto:');
-      if (!letter || letter.trim() === '') {
-        alert('Letra inválida.');
-        return;
-      }
-
-      const upperLetter = letter.trim().toUpperCase();
-
-      // Verificar se a letra já existe
-      let existingGesture = registeredGestures.find(g => g.letter === upperLetter);
-      if (!existingGesture) {
-        // Criar novo gesto com amostras
-        existingGesture = { letter: upperLetter, samples: [] };
-        registeredGestures.push(existingGesture);
-      }
-
-      // Adicionar nova amostra
-      const landmarks = lastHandResults.multiHandLandmarks[0];
-      existingGesture.samples.push(JSON.parse(JSON.stringify(landmarks)));
-
-      // Salvar no localStorage
-      localStorage.setItem('registeredGestures', JSON.stringify(registeredGestures));
-
-      // Atualizar a lista
-      updateDataList();
-
-      alert(`Amostra para a letra "${upperLetter}" cadastrada com sucesso! Total de amostras: ${existingGesture.samples.length}`);
+    limparDadosBtn.addEventListener('click', () => {
+        gesturesDB.length = 0;
+        facesDB.length = 0;
+        renderDBLists();
     });
 
-    // Cadastrar Faces
-    cadastrarFacesButton.addEventListener('click', () => {
-      if (!lastFaceResults || !lastFaceResults.multiFaceLandmarks || lastFaceResults.multiFaceLandmarks.length === 0) {
-        alert('Nenhum rosto detectado. Posicione o rosto na frente da câmera e tente novamente.');
-        return;
-      }
+    function startRegistration(mode) {
+        registering = true;
+        registerMode = mode;
+        registerFrames = [];
+        registerStart = performance.now();
+        recordingProgress.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = `Gravando ${mode}...`;
+    }
 
-      const name = prompt('Digite o nome da pessoa:');
-      if (!name || name.trim() === '') {
-        alert('Nome inválido.');
-        return;
-      }
+    function finishRegistration() {
+        registering = false;
+        recordingProgress.style.display = 'none';
+        if (registerFrames.length === 0) {
+            alert('Nenhum dado capturado. Tente novamente com a mão/face visível.');
+            return;
+        }
+        // simple summarization: store first captured frame
+        const sample = registerFrames[Math.floor(registerFrames.length / 2)].data;
+        if (registerMode === 'gesture') {
+            gesturesDB.push({id: Date.now(), sample});
+            speakIfEnabled('Gesto cadastrado.');
+        } else if (registerMode === 'face') {
+            facesDB.push({id: Date.now(), sample});
+            speakIfEnabled('Face cadastrada.');
+        }
+        renderDBLists();
+        registerMode = null;
+        registerFrames = [];
+    }
 
-      // Usar o primeiro rosto detectado
-      const landmarks = lastFaceResults.multiFaceLandmarks[0];
-      registeredFaces.push({ name: name.trim(), landmarks: JSON.parse(JSON.stringify(landmarks)) });
+    function stopRegistration() {
+        if (registering) {
+            registering = false;
+            recordingProgress.style.display = 'none';
+            registerMode = null;
+            registerFrames = [];
+            speakIfEnabled('Cadastro interrompido.');
+        }
+    }
 
-      // Salvar no localStorage
-      localStorage.setItem('registeredFaces', JSON.stringify(registeredFaces));
+    // expose stopRegistration globally because original HTML had onclick reference
+    window.stopRegistration = stopRegistration;
 
-      // Atualizar a lista
-      updateDataList();
+    function renderDBLists() {
+        gesturesList.innerHTML = '';
+        facesList.innerHTML = '';
+        gesturesDB.forEach(g => {
+            const li = document.createElement('li');
+            li.textContent = `Gesto ${g.id} (exemplos: 1)`;
+            gesturesList.appendChild(li);
+        });
+        facesDB.forEach(f => {
+            const li = document.createElement('li');
+            li.textContent = `Face ${f.id} (exemplos: 1)`;
+            facesList.appendChild(li);
+        });
+    }
 
-      alert(`Face de "${name.trim()}" cadastrada com sucesso!`);
+    function speakIfEnabled(text) {
+        if (!ttsToggle.checked) return;
+        if (!window.speechSynthesis) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'pt-BR';
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+    }
+
+    // ensure canvas scales to video
+    function resizeCanvas() {
+        const rect = canvasElement.getBoundingClientRect();
+        canvasElement.width = rect.width * devicePixelRatio;
+        canvasElement.height = rect.height * devicePixelRatio;
+        canvasCtx.scale(devicePixelRatio, devicePixelRatio);
+    }
+    window.addEventListener('resize', () => {
+        // keep canvas resolution usable
+        // small debounce
+        clearTimeout(window._resizeTimeout);
+        window._resizeTimeout = setTimeout(resizeCanvas, 150);
+    });
+    // initial resize
+    setTimeout(resizeCanvas, 200);
+
+    // clean up on unload
+    window.addEventListener('beforeunload', () => {
+        stopRegistration();
+        stopCamera();
     });
 
-    // Limpar Dados
-    limparDadosButton.addEventListener('click', () => {
-      if (confirm('Tem certeza de que deseja limpar todos os dados salvos (gestos e faces)?')) {
-        localStorage.removeItem('registeredGestures');
-        localStorage.removeItem('registeredFaces');
-        registeredGestures = [];
-        registeredFaces = [];
-        updateDataList();
-        alert('Dados limpos com sucesso!');
-      }
-    });
-  </script>
+    // set initial UI
+    renderDBLists();
+})();
+</script>
 </body>
 </html>
+
